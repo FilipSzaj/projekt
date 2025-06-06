@@ -1,194 +1,146 @@
-# from cProfile import label
 from tkinter import *
 import tkintermapview
 
-users = []
+# Listy i klasy takie jak wcześniej - dla przejrzystości pomijam ich definicję
+jednostki = []
+pracownicy = []
+pododdzialy = []
+zolnierze = []
 
-class User:
-    def __init__(self, nazwa, pracownicy, pododdzial, zolnierze):
+class Jednostka:
+    def __init__(self, nazwa, miejscowosc):
         self.nazwa = nazwa
-        self.pracownicy = pracownicy
-        self.pododdzial = pododdzial
-        self.zolnierze = zolnierze
-        self.coordinates = self.get_coordinates
-        self.marker = map_widget.set_marker(self.coordinates[0], self.coordinates[1])
+        self.miejscowosc = miejscowosc
+        self.coordinates = (0, 0)
 
-    def get_coordinates(self) -> list:
-        try:
-            import requests
-            from bs4 import BeautifulSoup
-            address_url: str = f"https://pl.wikipedia.org/wiki/{self.pododdzial}"
-            response = requests.get(address_url).text
-            response_html = BeautifulSoup(response, "html.parser")
-            longitude: float = float(response_html.select(".longitude")[1].text.replace(",", "."))
-            latitude: float = float(response_html.select(".latitude")[1].text.replace(",", "."))
-            return [latitude, longitude]
-        except:
-            return [0, 0]
+class Pracownik:
+    def __init__(self, imie_nazwisko, stanowisko):
+        self.imie_nazwisko = imie_nazwisko
+        self.stanowisko = stanowisko
 
-def add_user():
-    nazwa = entry_nazwa.get()
-    pracownicy = entry_pracownicy.get()
-    pododdzial = entry_pododdzial.get()
-    zolnierze = entry_zolnierze.get()
+class Pododdzial:
+    def __init__(self, nazwa):
+        self.nazwa = nazwa
 
-    new_user = User(nazwa=nazwa, pracownicy=pracownicy, pododdzial=pododdzial, zolnierze=zolnierze)
-    users.append(new_user)
+class Zolnierz:
+    def __init__(self, imie_nazwisko, stopien):
+        self.imie_nazwisko = imie_nazwisko
+        self.stopien = stopien
 
-    entry_nazwa.delete(0, END)
-    entry_pracownicy.delete(0, END)
-    entry_pododdzial.delete(0, END)
-    entry_zolnierze.delete(0, END)
-    entry_nazwa.focus()
-    show_users()
-    update_map()
+def dodaj_jednostke():
+    nazwa = entry_jednostka_nazwa.get()
+    miejscowosc = entry_jednostka_miejscowosc.get()
+    if nazwa and miejscowosc:
+        jednostki.append(Jednostka(nazwa, miejscowosc))
+        entry_jednostka_nazwa.delete(0, END)
+        entry_jednostka_miejscowosc.delete(0, END)
+        pokaz_jednostki()
 
-def show_users():
-    listbox_lista_obiektow.delete(0, END)
-    for idx, user in enumerate(users):
-        listbox_lista_obiektow.insert(idx, f"{idx + 1}. {user.nazwa} {user.pracownicy} {user.pododdzial} {user.zolnierze}")
-
-def delete_user():
+def usun_jednostke():
     try:
-        idx = listbox_lista_obiektow.curselection()[0]
-        users.projekt(idx)
-        show_users()
-        update_map()
+        idx = listbox_jednostki.curselection()[0]
+        del jednostki[idx]
+        pokaz_jednostki()
     except IndexError:
         pass
 
-def user_details():
+def pokaz_jednostki():
+    listbox_jednostki.delete(0, END)
+    for i, j in enumerate(jednostki):
+        listbox_jednostki.insert(END, f"{i+1}. {j.nazwa} ({j.miejscowosc})")
+
+def pokaz_szczegoly_jednostki():
     try:
-        idx = listbox_lista_obiektow.curselection()[0]
-        label_nazwa_szczegoly_obiektu_wartosc.configure(text=users[idx].nazwa)
-        label_pracownicy_szczegoly_obiektu_wartosc.configure(text=users[idx].pracownicy)
-        label_pododdzial_szczegoly_obiektu_wartosc.configure(text=users[idx].pododdzial)
-        label_zolnierze_szczegoly_obiektu_wartosc.configure(text=users[idx].zolnierze)
-        map_widget.set_position(users[idx].coordinates[0], users[idx].coordinates[1])
-        map_widget.set_zoom(17)
+        idx = listbox_jednostki.curselection()[0]
+        j = jednostki[idx]
+        label_szczegoly_jednostki.config(text=f"Nazwa: {j.nazwa}\nMiejscowość: {j.miejscowosc}")
     except IndexError:
         pass
 
-def edit_user():
-    try:
-        idx = listbox_lista_obiektow.curselection()[0]
-        entry_nazwa.delete(0, END)
-        entry_nazwa.insert(0, users[idx].nazwa)
-        entry_pracownicy.delete(0, END)
-        entry_pracownicy.insert(0, users[idx].nazwa)
-        entry_pododdzial.delete(0, END)
-        entry_pododdzial.insert(0, users[idx].nazwa)
-        entry_zolnierze.delete(0, END)
-        entry_zolnierze.insert(0, users[idx].nazwa)
+def dodaj_pracownika():
+    imie = entry_pracownik_imie.get()
+    stanowisko = entry_pracownik_stanowisko.get()
+    if imie and stanowisko:
+        pracownicy.append(Pracownik(imie, stanowisko))
+        entry_pracownik_imie.delete(0, END)
+        entry_pracownik_stanowisko.delete(0, END)
+        pokaz_pracownikow()
 
-        button_dodaj_obiekt.configure(text="Zapisz", command=lambda: update_users(idx))
+def usun_pracownika():
+    try:
+        idx = listbox_pracownicy.curselection()[0]
+        del pracownicy[idx]
+        pokaz_pracownikow()
     except IndexError:
         pass
 
-def update_users(idx):
-    nazwa = entry_nazwa.get()
-    pracownicy = entry_pracownicy.get()
-    pododdzial = entry_pododdzial.get()
-    zolnierze = entry_zolnierze.get()
+def pokaz_pracownikow():
+    listbox_pracownicy.delete(0, END)
+    for i, p in enumerate(pracownicy):
+        listbox_pracownicy.insert(END, f"{i+1}. {p.imie_nazwisko} - {p.stanowisko}")
 
-    users[idx].nazwa = nazwa
-    users[idx].pracownicy = pracownicy
-    users[idx].pododdzial = pododdzial
-    users[idx].zolnierze = zolnierze
-    users[idx].coordinates = users[idx].get_coordinates()
-    users[idx].marker = map_widget.set_marker(users[idx].coordinates[0], users[idx].coordinates[1])
+def pokaz_szczegoly_pracownika():
+    try:
+        idx = listbox_pracownicy.curselection()[0]
+        p = pracownicy[idx]
+        label_szczegoly_pracownika.config(text=f"Imię i nazwisko: {p.imie_nazwisko}\nStanowisko: {p.stanowisko}")
+    except IndexError:
+        pass
 
-    button_dodaj_obiekt.configure(text="Dodaj", command=add_user)
-    entry_nazwa.delete(0, END)
-    entry_pracownicy.delete(0, END)
-    entry_pododdzial.delete(0, END)
-    entry_zolnierze.delete(0, END)
-    entry_nazwa.focus()
-    show_users()
-    update_map()
+def dodaj_pododdzial():
+    nazwa = entry_pododdzial_nazwa.get()
+    if nazwa:
+        pododdzialy.append(Pododdzial(nazwa))
+        entry_pododdzial_nazwa.delete(0, END)
+        pokaz_pododdzialy()
 
-def update_map():
-    map_widget.delete_all_marker()
-    for user in users:
-        if user.coordinates:
-            map_widget.set_position(user.coordinates[0], user.coordinates[1])
-            map_widget.set_marker(user.coordinates[0], user.coordinates[1], text=user.nazwa)
+def usun_pododdzial():
+    try:
+        idx = listbox_pododdzialy.curselection()[0]
+        del pododdzialy[idx]
+        pokaz_pododdzialy()
+    except IndexError:
+        pass
 
-root = Tk()
-root.title("System zarządzania jednostkami wojskowymi")
-root.geometry("1024x768")
+def pokaz_pododdzialy():
+    listbox_pododdzialy.delete(0, END)
+    for i, p in enumerate(pododdzialy):
+        listbox_pododdzialy.insert(END, f"{i+1}. {p.nazwa}")
 
-ramka_lista_obiektow = Frame(root)
-ramka_formularz = Frame(root)
-ramka_szczegol_obiektow = Frame(root)
-ramka_mapa = Frame(root)
+def pokaz_szczegoly_pododdzialu():
+    try:
+        idx = listbox_pododdzialy.curselection()[0]
+        p = pododdzialy[idx]
+        label_szczegoly_pododdzialu.config(text=f"Nazwa: {p.nazwa}")
+    except IndexError:
+        pass
 
-ramka_lista_obiektow.grid(row=0, column=0)
-ramka_formularz.grid(row=0, column=1)
-ramka_szczegol_obiektow.grid(row=1, column=0)
-ramka_mapa.grid(row=2, column=0, columnspan=2)
+def dodaj_zolnierza():
+    imie = entry_zolnierz_imie.get()
+    stopien = entry_zolnierz_stopien.get()
+    if imie and stopien:
+        zolnierze.append(Zolnierz(imie, stopien))
+        entry_zolnierz_imie.delete(0, END)
+        entry_zolnierz_stopien.delete(0, END)
+        pokaz_zolnierzy()
 
-label_jednostek = Label(ramka_szczegol_obiektow, text="Lista jednostek wojskowych:")
-label_jednostek.grid(row=0, column=0, columnspan=3)
-listbox_lista_obiektow = Listbox()
-listbox_lista_obiektow.grid(row=1, column=0, columnspan=3)
-button_pokaz_szczegoly = Button(ramka_szczegol_obiektow, text="Pokaż Szczegóły", command=user_details)
-button_pokaz_szczegoly.grid(row=2, column=0)
-button_edytuj_obiekt = Button(ramka_szczegol_obiektow, text="Edytuj obiekt", command=edit_user)
-button_edytuj_obiekt.grid(row=2, column=1)
-button_usun_obiekt = Button(ramka_szczegol_obiektow, text="Usuń obiekt", command=delete_user)
-button_usun_obiekt.grid(row=2, column=2)
-button_usun_obiekt.grid(row=2, column=2)
+def usun_zolnierza():
+    try:
+        idx = listbox_zolnierze.curselection()[0]
+        del zolnierze[idx]
+        pokaz_zolnierzy()
+    except IndexError:
+        pass
 
-label_formularz = Label(ramka_formularz, text="Formularz: ")
-label_formularz.grid(row=0, column=0, columnspan=2, )
-label_nazwa = Label(ramka_formularz, text="Nazwa jednostki: ")
-label_nazwa.grid(row=1, column=0, sticky=W)
-label_pracownicy = Label(ramka_formularz, text="Pracownicy: ")
-label_pracownicy.grid(row=2, column=0, sticky=W)
-label_pododdzial = Label(ramka_formularz, text="Nazwa pododdziału: ")
-label_pododdzial.grid(row=3, column=0, sticky=W)
-label_zolnierze = Label(ramka_formularz, text="Żołnierze: ")
-label_zolnierze.grid(row=4, column=0, sticky=W)
+def pokaz_zolnierzy():
+    listbox_zolnierze.delete(0, END)
+    for i, z in enumerate(zolnierze):
+        listbox_zolnierze.insert(END, f"{i+1}. {z.imie_nazwisko} - {z.stopien}")
 
-entry_nazwa = Entry(ramka_formularz)
-entry_nazwa.grid(row=1, column=1, sticky=W)
-entry_pracownicy = Entry(ramka_formularz)
-entry_pracownicy.grid(row=2, column=1, sticky=W)
-entry_pododdzial = Entry(ramka_formularz)
-entry_pododdzial.grid(row=3, column=1, sticky=W)
-entry_zolnierze = Entry(ramka_formularz)
-entry_zolnierze.grid(row=4, column=1, sticky=W)
-
-button_dodaj_obiekt = Button(ramka_formularz, text="Dodaj", command=add_user)
-button_dodaj_obiekt.grid(row=5, column=1, columnspan=2)
-
-label_szczegoly_obiektu = Label(ramka_szczegol_obiektow, text="Szczegóły: ")
-label_szczegoly_obiektu.grid(row=0, column=0, sticky=W)
-
-label_nazwa_szczegoly_obiektu = Label(ramka_szczegol_obiektow, text="Nazwa jednostki: ")
-label_nazwa_szczegoly_obiektu.grid(row=1, column=0, )
-label_nazwa_szczegoly_obiektu_wartosc = Label(ramka_szczegol_obiektow, text="....")
-label_nazwa_szczegoly_obiektu_wartosc.grid(row=1, column=1, )
-
-label_pracownicy_szczegoly_obiektu = Label(ramka_szczegol_obiektow, text="Pracownicy: ")
-label_pracownicy_szczegoly_obiektu.grid(row=2, column=0, )
-label_pracownicy_szczegoly_obiektu_wartosc = Label(ramka_szczegol_obiektow, text="....")
-label_pracownicy_szczegoly_obiektu_wartosc.grid(row=2, column=1, )
-
-label_pododdzial_szczegoly_obiektu = Label(ramka_szczegol_obiektow, text="Pododdziały: ")
-label_pododdzial_szczegoly_obiektu.grid(row=3, column=0, )
-label_pododdzial_szczegoly_obiektu_wartosc = Label(ramka_szczegol_obiektow, text="....")
-label_pododdzial_szczegoly_obiektu_wartosc.grid(row=3, column=1, )
-
-label_zolnierze_szczegoly_obiektu = Label(ramka_szczegol_obiektow, text="Żołnierze: ")
-label_zolnierze_szczegoly_obiektu.grid(row=4, column=0, )
-label_zolnierze_szczegoly_obiektu_wartosc = Label(ramka_szczegol_obiektow, text="....")
-label_zolnierze_szczegoly_obiektu_wartosc.grid(row=4, column=1, )
-
-map_widget = tkintermapview.TkinterMapView(width=1024, height=400)
-map_widget.set_position(52.23, 21)
-map_widget.set_zoom(5)  
-map_widget.grid(row=0, column=0, columnspan=8)
-
-root.mainloop()
+def pokaz_szczegoly_zolnierza():
+    try:
+        idx = listbox_zolnierze.curselection()[0]
+        z = zolnierze[idx]
+        label_szczegoly_zolnierza.config(text=f"Imię i nazwisko: {z.imie_nazwisko}\nStopień: {z.stopien}")
+    except IndexError:
+        pass
