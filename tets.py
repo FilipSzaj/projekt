@@ -1,194 +1,176 @@
-# from cProfile import label
 from tkinter import *
 import tkintermapview
+import requests
 
-users = []
-
-class User:
-    def __init__(self, nazwa, pracownicy, pododdzial, zolnierze):
-        self.nazwa = nazwa
-        self.pracownicy = pracownicy
-        self.pododdzial = pododdzial
-        self.zolnierze = zolnierze
-        self.coordinates = self.get_coordinates
-        self.marker = map_widget.set_marker(self.coordinates[0], self.coordinates[1])
-
-    def get_coordinates(self) -> list:
-        try:
-            import requests
-            from bs4 import BeautifulSoup
-            address_url: str = f"https://pl.wikipedia.org/wiki/{self.pododdzial}"
-            response = requests.get(address_url).text
-            response_html = BeautifulSoup(response, "html.parser")
-            longitude: float = float(response_html.select(".longitude")[1].text.replace(",", "."))
-            latitude: float = float(response_html.select(".latitude")[1].text.replace(",", "."))
-            return [latitude, longitude]
-        except:
-            return [0, 0]
-
-def add_user():
-    nazwa = entry_nazwa.get()
-    pracownicy = entry_pracownicy.get()
-    pododdzial = entry_pododdzial.get()
-    zolnierze = entry_zolnierze.get()
-
-    new_user = User(nazwa=nazwa, pracownicy=pracownicy, pododdzial=pododdzial, zolnierze=zolnierze)
-    users.append(new_user)
-
-    entry_nazwa.delete(0, END)
-    entry_pracownicy.delete(0, END)
-    entry_pododdzial.delete(0, END)
-    entry_zolnierze.delete(0, END)
-    entry_nazwa.focus()
-    show_users()
-    update_map()
-
-def show_users():
-    listbox_lista_obiektow.delete(0, END)
-    for idx, user in enumerate(users):
-        listbox_lista_obiektow.insert(idx, f"{idx + 1}. {user.nazwa} {user.pracownicy} {user.pododdzial} {user.zolnierze}")
-
-def delete_user():
-    try:
-        idx = listbox_lista_obiektow.curselection()[0]
-        users.projekt(idx)
-        show_users()
-        update_map()
-    except IndexError:
-        pass
-
-def user_details():
-    try:
-        idx = listbox_lista_obiektow.curselection()[0]
-        label_nazwa_szczegoly_obiektu_wartosc.configure(text=users[idx].nazwa)
-        label_pracownicy_szczegoly_obiektu_wartosc.configure(text=users[idx].pracownicy)
-        label_pododdzial_szczegoly_obiektu_wartosc.configure(text=users[idx].pododdzial)
-        label_zolnierze_szczegoly_obiektu_wartosc.configure(text=users[idx].zolnierze)
-        map_widget.set_position(users[idx].coordinates[0], users[idx].coordinates[1])
-        map_widget.set_zoom(17)
-    except IndexError:
-        pass
-
-def edit_user():
-    try:
-        idx = listbox_lista_obiektow.curselection()[0]
-        entry_nazwa.delete(0, END)
-        entry_nazwa.insert(0, users[idx].nazwa)
-        entry_pracownicy.delete(0, END)
-        entry_pracownicy.insert(0, users[idx].nazwa)
-        entry_pododdzial.delete(0, END)
-        entry_pododdzial.insert(0, users[idx].nazwa)
-        entry_zolnierze.delete(0, END)
-        entry_zolnierze.insert(0, users[idx].nazwa)
-
-        button_dodaj_obiekt.configure(text="Zapisz", command=lambda: update_users(idx))
-    except IndexError:
-        pass
-
-def update_users(idx):
-    nazwa = entry_nazwa.get()
-    pracownicy = entry_pracownicy.get()
-    pododdzial = entry_pododdzial.get()
-    zolnierze = entry_zolnierze.get()
-
-    users[idx].nazwa = nazwa
-    users[idx].pracownicy = pracownicy
-    users[idx].pododdzial = pododdzial
-    users[idx].zolnierze = zolnierze
-    users[idx].coordinates = users[idx].get_coordinates()
-    users[idx].marker = map_widget.set_marker(users[idx].coordinates[0], users[idx].coordinates[1])
-
-    button_dodaj_obiekt.configure(text="Dodaj", command=add_user)
-    entry_nazwa.delete(0, END)
-    entry_pracownicy.delete(0, END)
-    entry_pododdzial.delete(0, END)
-    entry_zolnierze.delete(0, END)
-    entry_nazwa.focus()
-    show_users()
-    update_map()
-
-def update_map():
-    map_widget.delete_all_marker()
-    for user in users:
-        if user.coordinates:
-            map_widget.set_position(user.coordinates[0], user.coordinates[1])
-            map_widget.set_marker(user.coordinates[0], user.coordinates[1], text=user.nazwa)
+jednostki = []
+pracownicy = []
+pododdzialy = []
+zolnierze = []
 
 root = Tk()
-root.title("System zarządzania jednostkami wojskowymi")
-root.geometry("1024x768")
+root.title("Zarządzanie jednostkami wojskowymi")
+root.geometry("1300x800")
 
-ramka_lista_obiektow = Frame(root)
-ramka_formularz = Frame(root)
-ramka_szczegol_obiektow = Frame(root)
-ramka_mapa = Frame(root)
+map_widget = tkintermapview.TkinterMapView(root, width=1300, height=500)
+map_widget.set_position(52.23, 21.01)  # Warszawa
+map_widget.set_zoom(6)
+map_widget.grid(row=10, column=0, columnspan=4)
 
-ramka_lista_obiektow.grid(row=0, column=0)
-ramka_formularz.grid(row=0, column=1)
-ramka_szczegol_obiektow.grid(row=1, column=0)
-ramka_mapa.grid(row=2, column=0, columnspan=2)
+def get_coordinates(miejscowosc):
+    try:
+        url = f"https://nominatim.openstreetmap.org/search?format=json&q={miejscowosc}"
+        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}).json()
+        if response:
+            latitude = float(response[0]["lat"])
+            longitude = float(response[0]["lon"])
+            return [latitude, longitude]
+        else:
+            return [0, 0]
+    except:
+        return [0, 0]
 
-label_jednostek = Label(ramka_szczegol_obiektow, text="Lista jednostek wojskowych:")
-label_jednostek.grid(row=0, column=0, columnspan=3)
-listbox_lista_obiektow = Listbox()
-listbox_lista_obiektow.grid(row=1, column=0, columnspan=3)
-button_pokaz_szczegoly = Button(ramka_szczegol_obiektow, text="Pokaż Szczegóły", command=user_details)
-button_pokaz_szczegoly.grid(row=2, column=0)
-button_edytuj_obiekt = Button(ramka_szczegol_obiektow, text="Edytuj obiekt", command=edit_user)
-button_edytuj_obiekt.grid(row=2, column=1)
-button_usun_obiekt = Button(ramka_szczegol_obiektow, text="Usuń obiekt", command=delete_user)
-button_usun_obiekt.grid(row=2, column=2)
-button_usun_obiekt.grid(row=2, column=2)
+class Jednostka:
+    def __init__(self, nazwa, miejscowosc):
+        self.nazwa = nazwa
+        self.miejscowosc = miejscowosc
+        self.coordinates = get_coordinates(miejscowosc)
+        self.marker = map_widget.set_marker(self.coordinates[0], self.coordinates[1], text=self.nazwa)
 
-label_formularz = Label(ramka_formularz, text="Formularz: ")
-label_formularz.grid(row=0, column=0, columnspan=2, )
-label_nazwa = Label(ramka_formularz, text="Nazwa jednostki: ")
-label_nazwa.grid(row=1, column=0, sticky=W)
-label_pracownicy = Label(ramka_formularz, text="Pracownicy: ")
-label_pracownicy.grid(row=2, column=0, sticky=W)
-label_pododdzial = Label(ramka_formularz, text="Nazwa pododdziału: ")
-label_pododdzial.grid(row=3, column=0, sticky=W)
-label_zolnierze = Label(ramka_formularz, text="Żołnierze: ")
-label_zolnierze.grid(row=4, column=0, sticky=W)
+class Pracownik:
+    def __init__(self, imie_nazwisko, stanowisko, miejscowosc):
+        self.imie_nazwisko = imie_nazwisko
+        self.stanowisko = stanowisko
+        self.miejscowosc = miejscowosc
+        self.coordinates = get_coordinates(miejscowosc)
+        self.marker = map_widget.set_marker(self.coordinates[0], self.coordinates[1], text=self.imie_nazwisko)
 
-entry_nazwa = Entry(ramka_formularz)
-entry_nazwa.grid(row=1, column=1, sticky=W)
-entry_pracownicy = Entry(ramka_formularz)
-entry_pracownicy.grid(row=2, column=1, sticky=W)
-entry_pododdzial = Entry(ramka_formularz)
-entry_pododdzial.grid(row=3, column=1, sticky=W)
-entry_zolnierze = Entry(ramka_formularz)
-entry_zolnierze.grid(row=4, column=1, sticky=W)
+class Pododdzial:
+    def __init__(self, nazwa, miejscowosc):
+        self.nazwa = nazwa
+        self.miejscowosc = miejscowosc
+        self.coordinates = get_coordinates(miejscowosc)
+        self.marker = map_widget.set_marker(self.coordinates[0], self.coordinates[1], text=self.nazwa)
 
-button_dodaj_obiekt = Button(ramka_formularz, text="Dodaj", command=add_user)
-button_dodaj_obiekt.grid(row=5, column=1, columnspan=2)
+class Zolnierz:
+    def __init__(self, imie_nazwisko, stopien, miejscowosc):
+        self.imie_nazwisko = imie_nazwisko
+        self.stopien = stopien
+        self.miejscowosc = miejscowosc
+        self.coordinates = get_coordinates(miejscowosc)
+        self.marker = map_widget.set_marker(self.coordinates[0], self.coordinates[1], text=self.imie_nazwisko)
 
-label_szczegoly_obiektu = Label(ramka_szczegol_obiektow, text="Szczegóły: ")
-label_szczegoly_obiektu.grid(row=0, column=0, sticky=W)
+def popup_lista(obiekty, typ):
+    popup = Toplevel()
+    popup.title(f"Lista: {typ}")
+    listbox = Listbox(popup, width=50)
+    listbox.pack()
 
-label_nazwa_szczegoly_obiektu = Label(ramka_szczegol_obiektow, text="Nazwa jednostki: ")
-label_nazwa_szczegoly_obiektu.grid(row=1, column=0, )
-label_nazwa_szczegoly_obiektu_wartosc = Label(ramka_szczegol_obiektow, text="....")
-label_nazwa_szczegoly_obiektu_wartosc.grid(row=1, column=1, )
+    for i, obj in enumerate(obiekty):
+        if typ == "Jednostka":
+            listbox.insert(END, f"{i+1}. {obj.nazwa} ({obj.miejscowosc})")
+        elif typ == "Pracownik":
+            listbox.insert(END, f"{i+1}. {obj.imie_nazwisko} - {obj.stanowisko} ({obj.miejscowosc})")
+        elif typ == "Pododdział":
+            listbox.insert(END, f"{i+1}. {obj.nazwa} ({obj.miejscowosc})")
+        elif typ == "Żołnierz":
+            listbox.insert(END, f"{i+1}. {obj.stopien} {obj.imie_nazwisko} ({obj.miejscowosc})")
 
-label_pracownicy_szczegoly_obiektu = Label(ramka_szczegol_obiektow, text="Pracownicy: ")
-label_pracownicy_szczegoly_obiektu.grid(row=2, column=0, )
-label_pracownicy_szczegoly_obiektu_wartosc = Label(ramka_szczegol_obiektow, text="....")
-label_pracownicy_szczegoly_obiektu_wartosc.grid(row=2, column=1, )
+    def on_select(event):
+        if not listbox.curselection():
+            return
+        index = listbox.curselection()[0]
+        obj = obiekty[index]
 
-label_pododdzial_szczegoly_obiektu = Label(ramka_szczegol_obiektow, text="Pododdziały: ")
-label_pododdzial_szczegoly_obiektu.grid(row=3, column=0, )
-label_pododdzial_szczegoly_obiektu_wartosc = Label(ramka_szczegol_obiektow, text="....")
-label_pododdzial_szczegoly_obiektu_wartosc.grid(row=3, column=1, )
+        detail_popup = Toplevel()
+        detail_popup.title("Szczegóły")
 
-label_zolnierze_szczegoly_obiektu = Label(ramka_szczegol_obiektow, text="Żołnierze: ")
-label_zolnierze_szczegoly_obiektu.grid(row=4, column=0, )
-label_zolnierze_szczegoly_obiektu_wartosc = Label(ramka_szczegol_obiektow, text="....")
-label_zolnierze_szczegoly_obiektu_wartosc.grid(row=4, column=1, )
+        if typ == "Jednostka":
+            Label(detail_popup, text=f"Nazwa: {obj.nazwa}").pack()
+            Label(detail_popup, text=f"Miejscowość: {obj.miejscowosc}").pack()
+        elif typ == "Pracownik":
+            Label(detail_popup, text=f"Imię i nazwisko: {obj.imie_nazwisko}").pack()
+            Label(detail_popup, text=f"Stanowisko: {obj.stanowisko}").pack()
+            Label(detail_popup, text=f"Miejscowość: {obj.miejscowosc}").pack()
+        elif typ == "Pododdział":
+            Label(detail_popup, text=f"Nazwa: {obj.nazwa}").pack()
+            Label(detail_popup, text=f"Miejscowość: {obj.miejscowosc}").pack()
+        elif typ == "Żołnierz":
+            Label(detail_popup, text=f"Imię i nazwisko: {obj.imie_nazwisko}").pack()
+            Label(detail_popup, text=f"Stopień: {obj.stopien}").pack()
+            Label(detail_popup, text=f"Miejscowość: {obj.miejscowosc}").pack()
 
-map_widget = tkintermapview.TkinterMapView(width=1024, height=400)
-map_widget.set_position(52.23, 21)
-map_widget.set_zoom(5)
-map_widget.grid(row=0, column=0, columnspan=8)
+        Button(detail_popup, text="Usuń", command=lambda: [obj.marker.delete(), obiekty.pop(index), popup.destroy(), popup_lista(obiekty, typ)]).pack()
+
+    listbox.bind("<<ListboxSelect>>", on_select)
+
+def dodaj_obiekt(typ):
+    popup = Toplevel()
+    popup.title(f"Dodaj {typ}")
+
+    if typ == "Jednostka":
+        Label(popup, text="Nazwa:").grid(row=0, column=0)
+        entry1 = Entry(popup)
+        entry1.grid(row=0, column=1)
+        Label(popup, text="Miejscowość:").grid(row=1, column=0)
+        entry2 = Entry(popup)
+        entry2.grid(row=1, column=1)
+
+        def save():
+            jednostki.append(Jednostka(entry1.get(), entry2.get()))
+            popup.destroy()
+
+    elif typ == "Pracownik":
+        Label(popup, text="Imię i nazwisko:").grid(row=0, column=0)
+        entry1 = Entry(popup)
+        entry1.grid(row=0, column=1)
+        Label(popup, text="Stanowisko:").grid(row=1, column=0)
+        entry2 = Entry(popup)
+        entry2.grid(row=1, column=1)
+        Label(popup, text="Miejscowość:").grid(row=2, column=0)
+        entry3 = Entry(popup)
+        entry3.grid(row=2, column=1)
+
+        def save():
+            pracownicy.append(Pracownik(entry1.get(), entry2.get(), entry3.get()))
+            popup.destroy()
+
+    elif typ == "Pododdział":
+        Label(popup, text="Nazwa:").grid(row=0, column=0)
+        entry1 = Entry(popup)
+        entry1.grid(row=0, column=1)
+        Label(popup, text="Miejscowość:").grid(row=1, column=0)
+        entry2 = Entry(popup)
+        entry2.grid(row=1, column=1)
+
+        def save():
+            pododdzialy.append(Pododdzial(entry1.get(), entry2.get()))
+            popup.destroy()
+
+    elif typ == "Żołnierz":
+        Label(popup, text="Imię i nazwisko:").grid(row=0, column=0)
+        entry1 = Entry(popup)
+        entry1.grid(row=0, column=1)
+        Label(popup, text="Stopień:").grid(row=1, column=0)
+        entry2 = Entry(popup)
+        entry2.grid(row=1, column=1)
+        Label(popup, text="Miejscowość:").grid(row=2, column=0)
+        entry3 = Entry(popup)
+        entry3.grid(row=2, column=1)
+
+        def save():
+            zolnierze.append(Zolnierz(entry1.get(), entry2.get(), entry3.get()))
+            popup.destroy()
+
+    Button(popup, text="Zapisz", command=save).grid(row=3, column=0, columnspan=2)
+
+Button(root, text="Dodaj jednostkę", command=lambda: dodaj_obiekt("Jednostka")).grid(row=0, column=0)
+Button(root, text="Dodaj pracownika", command=lambda: dodaj_obiekt("Pracownik")).grid(row=0, column=1)
+Button(root, text="Dodaj pododdział", command=lambda: dodaj_obiekt("Pododdział")).grid(row=0, column=2)
+Button(root, text="Dodaj żołnierza", command=lambda: dodaj_obiekt("Żołnierz")).grid(row=0, column=3)
+
+Button(root, text="Lista jednostek", command=lambda: popup_lista(jednostki, "Jednostka")).grid(row=2, column=0)
+Button(root, text="Lista pracowników", command=lambda: popup_lista(pracownicy, "Pracownik")).grid(row=2, column=1)
+Button(root, text="Lista pododdziałów", command=lambda: popup_lista(pododdzialy, "Pododdział")).grid(row=2, column=2)
+Button(root, text="Lista żołnierzy", command=lambda: popup_lista(zolnierze, "Żołnierz")).grid(row=2, column=3)
 
 root.mainloop()

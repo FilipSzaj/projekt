@@ -10,7 +10,21 @@ class Jednostka:
     def __init__(self, nazwa, miejscowosc):
         self.nazwa = nazwa
         self.miejscowosc = miejscowosc
-        self.coordinates = (0, 0)
+        self.coordinates = self.get_coordinates()
+        self.marker = map_widget.set_marker(self.coordinates[0], self.coordinates[1])
+
+        def get_coordinates(self) -> list:
+            try:
+                import requests
+                from bs4 import BeautifulSoup
+                address_url: str = f"https://www.google.com/maps/search/{self.miejscowosc}"
+                response = requests.get(address_url).text
+                response_html = BeautifulSoup(response, "html.parser")
+                longitude: float = float(response_html.select(".longitude")[1].text.replace(",", "."))
+                latitude: float = float(response_html.select(".latitude")[1].text.replace(",", "."))
+                return [latitude, longitude]
+            except:
+                return [0, 0]
 
 class Pracownik:
     def __init__(self, imie_nazwisko, stanowisko):
